@@ -81,43 +81,39 @@ public class Player : MonoBehaviour
         else if(horizontal.x > 0)
         {
             direction = 1;
+            _fixWallLeft = false;
         }
         else if(horizontal.x < 0)
         {  
             direction = -1; 
+            _fixWallRight = false;
         }
-        Debug.Log(transform.position.x);
-        Debug.Log(transform.position.x + (direction * _playerSpeed * Time.deltaTime));
-        Debug.Log(transform.position.x + _checkWallDistance2);
-        Debug.Log(_checkWallDistance2);
-        if(direction == -1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) < transform.position.x - _checkWallDistance)
+
+        // Debug.Log(transform.position.x);
+        // Debug.Log(transform.position.x + (direction * _playerSpeed * Time.deltaTime));
+        // Debug.Log(transform.position.x + _checkWallDistance);
+        // Debug.Log(_checkWallDistance);
+        if(direction == -1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) < transform.position.x - (_checkWallDistance - _offset))
         {
             direction = 0;
-            Debug.LogError("Left");
+            // Debug.LogError("Left");
             if(!_fixWallLeft)
             {
                 _fixWallLeft = true;
-                transform.position -= new Vector3(_checkWallDistance + _offset, 0 ,0);
+                transform.position -= new Vector3(_checkWallDistance - _offset, 0 ,0);
+                // Debug.Log(new Vector3(_checkWallDistance -_offset, 0 ,0));
             }
         }
-        else
-        {
-            _fixWallLeft = false;
-        }
-        if(direction == 1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) > transform.position.x + _checkWallDistance2)
+        if(direction == 1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) > transform.position.x + (_checkWallDistance2 - _offset))
         {
             direction = 0;
-            Debug.LogError("Right");
+            // Debug.LogError("Right");
             if(!_fixWallRight)
             {
-                _fixWallRight = true;
+                _fixWallRight = true; 
                 transform.position += new Vector3(_checkWallDistance2 - _offset, 0 ,0);
-                Debug.Log("Right");
+                // Debug.Log("Right");
             }
-        }
-        else
-        {
-            _fixWallRight = false;
         }
 
         transform.position += new Vector3(direction * _playerSpeed * Time.deltaTime, 0, 0);
