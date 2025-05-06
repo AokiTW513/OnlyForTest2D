@@ -1,68 +1,79 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class Player : Actor
+public class Player : MonoBehaviour
 {
     #region Private Attributes
-    private float _playerHealth = 100f;
-    private float _playerMaxHealth = 100f;
-    private float _playerMinHealth = 0f;
-    private float _playerSpeed = 8f;
-    private float _jumpForce = 7.5f;
+    private float _playerSpeed = 15f;
+    private float _jumpForce = 20f;
     #endregion 
-
-    #region Public Attributes
-    public float Health => _playerHealth; //讓別的程式可以讀取Health值
-    #endregion
 
     #region Component
     private PlayerInput _playerInput; //這個要在玩家上綁PlayerInput，並且要放Input System進去
     private InputAction _moveAction; //移動的InputAction定義
     #endregion
 
-    #region SerializeField Things
-    [SerializeField] private Transform _playerGroundCheck;
-    [SerializeField] private Transform _playerWallCheck;
-    [SerializeField] private Transform _playerWallCheck2;
+     #region Variables Can't Change
+    private float _groundDistance = 0.01f;
+    private float _checkGroundDistanceRay = 10f;
+    private float _wallDistance = 0.01f;
+    private float _checkWallDistanceRay = 10f;
+    private LayerMask _groundLayer;
+    protected bool _isGround; //child can read this bool
+    protected bool _isWallLeft; //child can read this bool
+    protected bool _isWallRight; //child can read this bool
+    private float _gravity = -40f;
+    protected float _verticalVelocity = 0f;
+    private bool _fixGround = false;
+    private bool _fixWallLeft = false;
+    private bool _fixWallRight = false;
+    private float _checkGroundDistance;
+    private float _checkWallDistance;
+    private float _checkWallDistance2;
+    private float _offset = 0.1f;
+    private Vector3 _originalPosition;
+    protected int direction = 1;
+    #endregion
+
+    #region RaycastPosition
+    [SerializeField]private Transform _groundCheck;
+    [SerializeField]private Transform _wallCheck;
+    [SerializeField]private Transform _wallCheck2;
     #endregion
 
     #region Awake/Start
     //Init
-    protected override void Awake()
+    private void Awake()
     {
         _playerInput = GetComponent<PlayerInput>();
         _moveAction = _playerInput.actions["Move"]; //把InputAction指定到PlayerInput的Move上面
-        InitializeAttributes(_playerHealth, _playerMaxHealth, _playerMinHealth, _playerSpeed, this.gameObject, _playerGroundCheck, _playerWallCheck, _playerWallCheck2); //初始化數值用，呼叫父物件Actor的函數
-        base.Awake();
+        _groundLayer = LayerMask.GetMask("Ground");
         Debug.Log("Awake");
     }
 
-    protected override void Start()
+    private void Start()
     {
-        base.Start();
         //Debug.Log("Start");
     }
     #endregion
 
     #region Update/FixedUpdate
-    protected override void Update()
+    private void Update()
     {
-        base.Update();
-        //Debug.Log("Update");
+        Movement();
     }
-    protected override void FixedUpdate()
+    private void FixedUpdate()
     {
-        base.FixedUpdate();
-        //Debug.Log("FixedUpdate");
+        Gravity();
     }
     #endregion
 
     #region Player Movement
-    protected override void Movement()
+    private void Movement()
     {
+        IsWall();
         //Move
         Vector2 horizontal = _moveAction.ReadValue<Vector2>(); //horizontal = Move輸出出來的值
-        transform.position += new Vector3(horizontal.x * _playerSpeed * Time.deltaTime, 0, 0);
         if(horizontal.x == 0)
         {
             direction = 0;
@@ -75,6 +86,41 @@ public class Player : Actor
         {  
             direction = -1; 
         }
+        Debug.Log(transform.position.x);
+        Debug.Log(transform.position.x + (direction * _playerSpeed * Time.deltaTime));
+        Debug.Log(transform.position.x + _checkWallDistance2);
+        Debug.Log(_checkWallDistance2);
+        if(direction == -1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) < transform.position.x - _checkWallDistance)
+        {
+            direction = 0;
+            Debug.LogError("Left");
+            if(!_fixWallLeft)
+            {
+                _fixWallLeft = true;
+                transform.position -= new Vector3(_checkWallDistance + _offset, 0 ,0);
+            }
+        }
+        else
+        {
+            _fixWallLeft = false;
+        }
+        if(direction == 1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) > transform.position.x + _checkWallDistance2)
+        {
+            direction = 0;
+            Debug.LogError("Right");
+            if(!_fixWallRight)
+            {
+                _fixWallRight = true;
+                transform.position += new Vector3(_checkWallDistance2 - _offset, 0 ,0);
+                Debug.Log("Right");
+            }
+        }
+        else
+        {
+            _fixWallRight = false;
+        }
+
+        transform.position += new Vector3(direction * _playerSpeed * Time.deltaTime, 0, 0);
     }
 
     //Is Press Jump Key or Not
@@ -84,6 +130,96 @@ public class Player : Actor
         {
             _verticalVelocity = _jumpForce;
             _isGround = false;
+            // Debug.Log(_isGround);
+            // Debug.Log(_verticalVelocity);
+            // Debug.Log(_jumpForce);
+        }
+    }
+    #endregion
+
+    #region Physics
+    //Gravity
+    private void Gravity()
+    {
+        if(!_isGround)
+        {
+            //Debug.Log(transform.position.y + (_verticalVelocity * Time.deltaTime));
+            if(transform.position.y + (_verticalVelocity * Time.deltaTime) > transform.position.y - _checkGroundDistance)
+            {
+                _verticalVelocity += _gravity * Time.deltaTime;
+                //Debug.Log("Oh Yeah Gravity is working :D");
+            }
+        }
+        else
+        {
+            _verticalVelocity = 0f;
+        }
+
+        transform.position += new Vector3(0, _verticalVelocity * Time.deltaTime, 0);
+
+        IsGround();
+    }
+    #endregion
+
+    #region RaycastCheck
+    //Is Ground or Not
+    private void IsGround()
+    {
+        RaycastHit2D hit = Physics2D.Raycast(_groundCheck.transform.position, Vector2.down, _groundDistance, _groundLayer);
+        RaycastHit2D rayDistance = Physics2D.Raycast(_groundCheck.transform.position, Vector2.down, _checkGroundDistanceRay, _groundLayer);
+        Debug.DrawRay(_groundCheck.position, Vector2.down * _checkGroundDistanceRay, Color.blue);
+        if(hit.collider == null)
+        {
+            _checkGroundDistance = rayDistance.distance;
+            _originalPosition = transform.position;
+            if(_fixGround)
+            {
+                _fixGround = false;
+            }
+        }
+        _isGround = hit.collider != null;
+        if(hit.collider != null)
+        {
+            //Debug.Log(_isGround);
+            if(!_fixGround)
+            {
+                transform.position = new Vector3(transform.position.x, _originalPosition.y - _checkGroundDistance, 0);
+                _fixGround = true;
+            }
+        }
+    }
+
+    //Is Ground or Not
+    private void IsWall()
+    {
+        Vector3 leftStart = _wallCheck2.transform.position + Vector3.right * _offset;
+        Vector3 rightStart = _wallCheck.transform.position + Vector3.left * _offset;
+        RaycastHit2D hit = Physics2D.Raycast(leftStart, Vector2.left, _wallDistance, _groundLayer);
+        RaycastHit2D hit2 = Physics2D.Raycast(rightStart, Vector2.right, _wallDistance, _groundLayer);
+        RaycastHit2D rayDistance = Physics2D.Raycast(leftStart, Vector2.left, _checkWallDistanceRay, _groundLayer);
+        RaycastHit2D rayDistance2 = Physics2D.Raycast(rightStart, Vector2.right, _checkWallDistanceRay, _groundLayer);
+        Debug.DrawRay(leftStart, Vector2.left * _checkWallDistanceRay, Color.blue);
+        Debug.DrawRay(rightStart, Vector2.right * _checkWallDistanceRay, Color.blue);
+        _originalPosition = transform.position;
+
+        // 左牆距離更新
+        if (hit.collider == null)
+        {
+            _checkWallDistance = rayDistance.collider != null ? rayDistance.distance : _checkWallDistanceRay;
+        }
+        else
+        {
+            _checkWallDistance = _checkWallDistanceRay;
+        }
+
+        // 右牆距離更新
+        if (hit2.collider == null)
+        {
+            _checkWallDistance2 = rayDistance2.collider != null ? rayDistance2.distance : _checkWallDistanceRay;
+        }
+        else
+        {
+            _checkWallDistance2 = _checkWallDistanceRay;
         }
     }
     #endregion
