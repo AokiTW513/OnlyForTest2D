@@ -5,7 +5,7 @@ public class Player : MonoBehaviour
 {
     #region Private Attributes
     private float _playerSpeed = 15f;
-    private float _jumpForce = 20f;
+    private float _jumpForce = 30f;
     #endregion 
 
     #region Component
@@ -13,7 +13,7 @@ public class Player : MonoBehaviour
     private InputAction _moveAction; //移動的InputAction定義
     #endregion
 
-     #region Variables Can't Change
+    #region Variables Can't Change
     private float _groundDistance = 0.01f;
     private float _checkGroundDistanceRay = 10f;
     private float _wallDistance = 0.01f;
@@ -22,7 +22,7 @@ public class Player : MonoBehaviour
     protected bool _isGround; //child can read this bool
     protected bool _isWallLeft; //child can read this bool
     protected bool _isWallRight; //child can read this bool
-    private float _gravity = -40f;
+    private float _gravity = -200f;
     protected float _verticalVelocity = 0f;
     private bool _fixGround = false;
     private bool _fixWallLeft = false;
@@ -72,6 +72,7 @@ public class Player : MonoBehaviour
     private void Movement()
     {
         IsWall();
+
         //Move
         Vector2 horizontal = _moveAction.ReadValue<Vector2>(); //horizontal = Move輸出出來的值
         if(horizontal.x == 0)
@@ -89,30 +90,24 @@ public class Player : MonoBehaviour
             _fixWallRight = false;
         }
 
-        // Debug.Log(transform.position.x);
-        // Debug.Log(transform.position.x + (direction * _playerSpeed * Time.deltaTime));
-        // Debug.Log(transform.position.x + _checkWallDistance);
-        // Debug.Log(_checkWallDistance);
+        //Left
         if(direction == -1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) < transform.position.x - (_checkWallDistance - _offset))
         {
             direction = 0;
-            // Debug.LogError("Left");
             if(!_fixWallLeft)
             {
                 _fixWallLeft = true;
                 transform.position -= new Vector3(_checkWallDistance - _offset, 0 ,0);
-                // Debug.Log(new Vector3(_checkWallDistance -_offset, 0 ,0));
             }
         }
+        //Right
         if(direction == 1 && transform.position.x + (direction * _playerSpeed * Time.deltaTime) > transform.position.x + (_checkWallDistance2 - _offset))
         {
             direction = 0;
-            // Debug.LogError("Right");
             if(!_fixWallRight)
             {
                 _fixWallRight = true; 
                 transform.position += new Vector3(_checkWallDistance2 - _offset, 0 ,0);
-                // Debug.Log("Right");
             }
         }
 
@@ -126,9 +121,6 @@ public class Player : MonoBehaviour
         {
             _verticalVelocity = _jumpForce;
             _isGround = false;
-            // Debug.Log(_isGround);
-            // Debug.Log(_verticalVelocity);
-            // Debug.Log(_jumpForce);
         }
     }
     #endregion
@@ -139,11 +131,9 @@ public class Player : MonoBehaviour
     {
         if(!_isGround)
         {
-            //Debug.Log(transform.position.y + (_verticalVelocity * Time.deltaTime));
             if(transform.position.y + (_verticalVelocity * Time.deltaTime) > transform.position.y - _checkGroundDistance)
             {
                 _verticalVelocity += _gravity * Time.deltaTime;
-                //Debug.Log("Oh Yeah Gravity is working :D");
             }
         }
         else
@@ -173,10 +163,11 @@ public class Player : MonoBehaviour
                 _fixGround = false;
             }
         }
+
         _isGround = hit.collider != null;
+        
         if(hit.collider != null)
         {
-            //Debug.Log(_isGround);
             if(!_fixGround)
             {
                 transform.position = new Vector3(transform.position.x, _originalPosition.y - _checkGroundDistance, 0);
@@ -196,7 +187,6 @@ public class Player : MonoBehaviour
         RaycastHit2D rayDistance2 = Physics2D.Raycast(rightStart, Vector2.right, _checkWallDistanceRay, _groundLayer);
         Debug.DrawRay(leftStart, Vector2.left * _checkWallDistanceRay, Color.blue);
         Debug.DrawRay(rightStart, Vector2.right * _checkWallDistanceRay, Color.blue);
-        _originalPosition = transform.position;
 
         // 左牆距離更新
         if (hit.collider == null)
